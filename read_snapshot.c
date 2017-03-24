@@ -208,16 +208,26 @@ int read_snapshot(FILE *dst, FILE *src) {
     return 0;
 }
 
+void usage(char *exec) {
+    printf("Usage: \n");
+    printf("\tRead Mode:\n");
+    printf("\t\t%s <snapshot>\n", exec);
+    printf("\tWrite Mode:\n");
+    printf("\t\t%s <src_snapshot> <dst_snapshot>\n", exec);
+}
+
 int main(int argc, char *argv[]) {
     FILE *src;
     FILE *dst;
   
     if(argc < 2) {
-        printf("Usage: \n");
-        printf("\tRead Mode:\n");
-        printf("\t\t%s <snapshot>\n", argv[0]);
-        printf("\tWrite Mode:\n");
-        printf("\t\t%s <src_snapshot> <dst_snapshot>\n", argv[0]);
+        usage(argv[0]);
+        exit(1);
+    }
+
+    if(access(argv[1], F_OK)) {
+        printf("Input file doesn't exist.\n");
+        usage(argv[0]);
         exit(1);
     }
 
