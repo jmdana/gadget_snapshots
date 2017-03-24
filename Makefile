@@ -2,11 +2,7 @@ PROJECT = read_snapshot
 CC = gcc
 
 COMPILE_OPTIONS = -Wall -O2
-
-#Headers
 HEADERS = 
-
-#Libraries
 LIBS = 
 
 # Subdirs to search for additional source files
@@ -27,9 +23,3 @@ $(PROJECT): $(OBJECTS)
 
 clean:
 	rm -f $(PROJECT) $(OBJECTS)
-
-.PHONY: depclean
-depclean:
-	rm -f $(DEPENDENCIES)
-
-clean-all: clean depclean
