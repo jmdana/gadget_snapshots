@@ -222,13 +222,13 @@ int main(int argc, char *argv[]) {
   
     if(argc < 2) {
         usage(argv[0]);
-        exit(1);
+        return EXIT_FAILURE;
     }
 
     if(access(argv[1], F_OK)) {
         printf("Input file doesn't exist.\n");
         usage(argv[0]);
-        exit(1);
+        return EXIT_FAILURE;
     }
 
     src = fopen(argv[1], "r");
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]) {
             printf("The file exists! Do you want to overwrite? (y/n): ");
             if(getonechar() != 'y') {
                 printf("\nExiting...\n");
-                exit(1);
+                return EXIT_FAILURE;
             }
         }
         dst = fopen(argv[2], "w");
@@ -254,5 +254,5 @@ int main(int argc, char *argv[]) {
     if(dst)
         fclose(dst);
     
-    return 0;
+    return EXIT_SUCCESS;
 }
