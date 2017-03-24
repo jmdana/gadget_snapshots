@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <termios.h>
 
 /*
  *
@@ -61,6 +63,33 @@ typedef struct gadget_header {
   double OmegaLambda;
   double HubbleParam;
 } header;
+
+int getonechar() {
+    int c;
+    static struct termios oldt, newt;
+
+    /*tcgetattr gets the parameters of the current terminal
+    STDIN_FILENO will tell tcgetattr that it should write the settings
+    of stdin to oldt*/
+    tcgetattr(STDIN_FILENO, &oldt);
+
+    newt = oldt;
+
+    /*ICANON normally takes care that one line at a time will be processed
+    that means it will return if it sees a "\n" or an EOF or an EOL*/
+    newt.c_lflag &= ~(ICANON);
+
+    /*Those new settings will be set to STDIN
+    TCSANOW tells tcsetattr to change attributes immediately. */
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+    c = getchar();
+
+    /*restore the old settings*/
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
+    return c;
+}
 
 int is_allowed(char *tag) {
     int i;
@@ -194,8 +223,16 @@ int main(int argc, char *argv[]) {
 
     src = fopen(argv[1], "r");
 
-    if(argc > 2)
+    if(argc > 2) {
+        if(!access(argv[2], F_OK)) {
+            printf("The file exists! Do you want to overwrite? (y/n): ");
+            if(getonechar() != 'y') {
+                printf("\nExiting...\n");
+                exit(1);
+            }
+        }
         dst = fopen(argv[2], "w");
+    }
     else
         dst = NULL;
 
