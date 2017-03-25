@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 /*
  *
@@ -74,6 +76,24 @@ typedef struct gadget_header {
   double OmegaLambda;
   double HubbleParam;
 } header;
+
+int same_file(char *src, char *dst) {
+    struct stat s1;
+    struct stat s2;
+    int f1;
+    int f2;
+
+    f1 = open(src, O_RDONLY);
+    f2 = open(dst, O_RDONLY);
+
+    fstat(f1, &s1);
+    fstat(f2, &s2);
+
+    close(f1);
+    close(f2);
+
+    return s1.st_ino == s2.st_ino && s1.st_dev == s2.st_dev;
+}
 
 int getonechar() {
     int c;
@@ -289,6 +309,11 @@ int main(int argc, char *argv[]) {
 
     if(argc > 2) {
         if(!access(argv[2], F_OK)) {
+            if(same_file(argv[1], argv[2])) {
+                printf("You don't want <src_snapshot> and <dst_snaphot> to be the same file. Trust me.\n");
+                printf("Exiting...\n");
+                return EXIT_FAILURE;
+            }
             printf("The file exists! Do you want to overwrite? (y/n): ");
             if(getonechar() != 'y') {
                 printf("\nExiting...\n");
