@@ -153,11 +153,27 @@ int print_header(header h) {
     return 0;
 }
 
+int free_block(block *b) {
+    free(b->data);
+    free(b);
+
+    return 0;
+}
+
+int free_datablock(datablock *db) {
+    free_block(db->tag);
+    free_block(db->data);
+    free(db);
+
+    return 0;
+}
+
+
 int write_block(FILE *dst, block *b) {
+    printf("Writing %d + %ld * 2 bytes\n", b->size1, sizeof(int));
     fwrite(&b->size1, sizeof(int), 1, dst);
     fwrite(b->data, sizeof(char), b->size1, dst);
     fwrite(&b->size2, sizeof(int), 1, dst);
-    printf("Writing %d + %ld * 2 bytes\n", b->size1, sizeof(int));
 
     return 0;
 }
@@ -185,6 +201,13 @@ block *read_block(FILE *src) {
     size = read_size(src);
     b->size2 = size;
 
+    if(b->size1 != b->size2) {
+        printf("The delimiters don't agree on the size of the block!\n");
+        printf("%d != %d\n", b->size1, b->size2);
+        printf("Exiting...\n");
+        exit(EXIT_FAILURE);
+    }
+
     return b;
 }
 
@@ -208,21 +231,6 @@ datablock *read_datablock(FILE *src) {
     }
 
     return db;
-}
-
-int free_block(block *b) {
-    free(b->data);
-    free(b);
-
-    return 0;
-}
-
-int free_datablock(datablock *db) {
-    free_block(db->tag);
-    free_block(db->data);
-    free(db);
-
-    return 0;
 }
 
 int read_snapshot(FILE *dst, FILE *src) {
