@@ -48,6 +48,17 @@ const char* ALLOWED_TAGS[] = {
 #define TAG_SIZE    8
 #define HEADER_SIZE 256
 
+typedef struct {
+    int size1;
+    char *data;
+    int size2;
+} block;
+
+typedef struct {
+    block *tag;
+    block *data;
+} datablock;
+
 typedef struct gadget_header {
   int npart[6];
   double mass[6];
@@ -113,6 +124,8 @@ int read_size(FILE *f) {
 }
 
 int print_header(header h) {
+    printf("********************************************\n");
+
     printf("Gas   | #: %10d\t| Mass: %f\n", h.npart[0], h.mass[0]);
     printf("Halo  | #: %10d\t| Mass: %f\n", h.npart[1], h.mass[1]);
     printf("Disk  | #: %10d\t| Mass: %f\n", h.npart[2], h.mass[2]);
@@ -135,74 +148,107 @@ int print_header(header h) {
     printf("OmegaLambda: %f\n", h.OmegaLambda);
     printf("HubbleParam: %f\n", h.HubbleParam);
     
+    printf("********************************************\n");
 
     return 0;
 }
 
-int read_block(char **buffer, FILE *src) {
-    // Delimiter
+int write_block(FILE *dst, block *b) {
+    fwrite(&b->size1, sizeof(int), 1, dst);
+    fwrite(b->data, sizeof(char), b->size1, dst);
+    fwrite(&b->size2, sizeof(int), 1, dst);
+    printf("Writing %d + %ld * 2 bytes\n", b->size1, sizeof(int));
+
+    return 0;
+}
+
+int write_datablock(FILE *dst, datablock *db) {
+    write_block(dst, db->tag);
+    write_block(dst, db->data);
+
+    return 0;
+}
+
+block *read_block(FILE *src) {
+    block *b = NULL;
     int size = read_size(src);
 
     if(!size)
-        return 0;
+        return b;
 
-    *buffer = (char *) malloc(size);
+    b = (block *) malloc(sizeof(block));
+    b->data = (char *) malloc(sizeof(char) * size);
 
-    fread(*buffer, sizeof(char), size, src);
+    b->size1 = size;
+    fread(b->data, sizeof(char), size, src);
 
-    if(size == TAG_SIZE) {
-        char tag[5];
-        strncpy(tag, *buffer, 4);
-        tag[4] = '\0';
-        printf("--------------------------------------------\n");
-        printf("%s\n", tag);
+    size = read_size(src);
+    b->size2 = size;
 
-        if(!is_allowed(tag)) {
-            free(*buffer);
-            size = 0;
-        }
+    return b;
+}
+
+datablock *read_datablock(FILE *src) {
+    datablock *db;
+
+    db = (datablock *) malloc(sizeof(*db));
+    db->tag = read_block(src);
+
+    if(!db->tag) {
+        free(db);
+        return NULL;
     }
-    else if(size == HEADER_SIZE) {
-        print_header(*((header *) *buffer));
+
+    db->data = read_block(src);
+
+    if(!db->data) {
+        free(db->tag);
+        free(db);
+        return NULL;
     }
-    else
-        printf("SIZE: %d\n", size);
 
-    // Delimiter
-    read_size(src);
+    return db;
+}
 
-    return size;
+int free_block(block *b) {
+    free(b->data);
+    free(b);
+
+    return 0;
+}
+
+int free_datablock(datablock *db) {
+    free_block(db->tag);
+    free_block(db->data);
+    free(db);
+
+    return 0;
 }
 
 int read_snapshot(FILE *dst, FILE *src) {
-    int size;
-    char *buffer;
-    int dump_next;
-
-    dump_next = 0;
+    char tag[5];
+    datablock *db;
 
     while(!feof(src)) {
-        size = read_block(&buffer, src);
+        db = read_datablock(src);
 
-        // skip the tag and the block itself
-        if(!size) {
-            dump_next = 1;
-            continue;
+        if(db) {
+            strncpy(tag, db->tag->data, 4);
+            tag[4] = '\0';
+            printf("--------------------------------------------\n");
+            printf("%s [data: %d B]\n", tag, db->data->size1);
+
+            if(!strcmp("HEAD", tag))
+                print_header(*(header *)db->data->data);
+
+            if(dst) {
+                if(is_allowed(tag))
+                    write_datablock(dst, db);
+                else
+                    printf("Skipping...\n");
+            }
+            free_datablock(db);
         }
-        
-        // write the block if there is a destination
-        // file and dump_next is not flagged
-        if(dst && !dump_next) {
-            fwrite(&size, sizeof(int), 1, dst);
-            fwrite(buffer, sizeof(char), size, dst);
-            fwrite(&size, sizeof(int), 1, dst);
-        }
-        
-        // reset the flag
-        dump_next = 0;
-        
-        if(buffer)
-            free(buffer);
     }
 
     return 0;
