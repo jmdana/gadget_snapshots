@@ -35,7 +35,7 @@
  *
  */
 
-#define N_ALLOWED_TAGS  9
+#define N_ALLOWED_TAGS  13
 
 const char* ALLOWED_TAGS[] = { 
     "HEAD",
@@ -46,6 +46,10 @@ const char* ALLOWED_TAGS[] = {
     "U   ",
     "RHO ",
     "HSML",
+    "POT ",
+    "ACCE",
+    "ENDT",
+    "TSTP",
     "AGSH",
 };
 
