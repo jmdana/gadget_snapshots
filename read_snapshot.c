@@ -55,7 +55,7 @@ const char* ALLOWED_TAGS[] = {
 #define UNITS_MASS "10^10 M./h"
 #define UNITS_DENSITY "10^10 h^-1 M./(h^-1 kpc)^3"
 #define UNITS_U "(km/s)^2"
-#define UNITS_HSML "(km/s)^2"
+#define UNITS_HSML "kpc/h"
 
 typedef struct {
     int size1;
