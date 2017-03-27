@@ -3,7 +3,7 @@ CC = gcc
 
 COMPILE_OPTIONS = -Wall -O2
 HEADERS = 
-LIBS = 
+LIBS = -lm
 
 # Subdirs to search for additional source files
 SUBDIRS := $(shell ls -F | grep "\/" )

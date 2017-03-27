@@ -25,6 +25,8 @@
 #include <termios.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <float.h>
+#include <math.h>
 
 /*
  *
@@ -49,6 +51,11 @@ const char* ALLOWED_TAGS[] = {
 
 #define TAG_SIZE    8
 #define HEADER_SIZE 256
+
+#define UNITS_MASS "10^10 M./h"
+#define UNITS_DENSITY "10^10 h^-1 M./(h^-1 kpc)^3"
+#define UNITS_U "(km/s)^2"
+#define UNITS_HSML "(km/s)^2"
 
 typedef struct {
     int size1;
@@ -94,6 +101,74 @@ int same_file(char *src, char *dst) {
 
     return s1.st_ino == s2.st_ino && s1.st_dev == s2.st_dev;
 }
+
+int onlygas_handler(header h, datablock *db) {
+    int i;
+    float *densities;
+    float min;
+    float max;
+    int total_size = 0;
+
+    densities = (float *) db->data->data;
+
+    if(h.npart[0] != 0) {
+        min = FLT_MAX;
+        max = FLT_MIN;
+
+        total_size += h.npart[0] * sizeof(float);
+
+        for(i=0; i < h.npart[0]; i++) {
+            min = fmin(min, densities[i]);
+            max = fmax(max, densities[i]);
+        }
+
+        if(min == max)
+            printf("Type 0: [%f]\n", min);
+        else
+            printf("Type 0: [%f - %f]\n", min, max);
+    }
+
+    if(total_size != db->data->size1)
+        printf("The measured size is different from the reported by the block delimiter!\n");
+
+    return 0;
+}
+
+int mass_handler(header h, datablock *db) {
+    int i;
+    int m;
+    float *masses;
+    float min;
+    float max;
+    int total_size = 0;
+
+    masses = (float *) db->data->data;
+
+    for(i=0; i<6; i++)
+        if(h.npart[i] != 0 && h.mass[i] == 0) {
+            total_size += h.npart[i] * sizeof(float);
+            min = FLT_MAX;
+            max = FLT_MIN;
+
+            for(m=0; m < h.npart[i]; m++) {
+                min = fmin(min, masses[m]);
+                max = fmax(max, masses[m]);
+            }
+
+            if(min == max)
+                printf("Type %d: [%f]\n", i, min);
+            else
+                printf("Type %d: [%f - %f]\n", i, min, max);
+
+            masses += h.npart[i];
+        }
+
+    if(total_size != db->data->size1)
+        printf("The measured size is different from the reported by the block delimiter!\n");
+
+    return 0;
+}
+
 
 int getonechar() {
     int c;
@@ -256,6 +331,7 @@ datablock *read_datablock(FILE *src) {
 int read_snapshot(FILE *dst, FILE *src) {
     char tag[5];
     datablock *db;
+    header h;
 
     while(!feof(src)) {
         db = read_datablock(src);
@@ -266,8 +342,26 @@ int read_snapshot(FILE *dst, FILE *src) {
             printf("--------------------------------------------\n");
             printf("%s [data: %d B]\n", tag, db->data->size1);
 
-            if(!strcmp("HEAD", tag))
-                print_header(*(header *)db->data->data);
+            if(!strcmp("HEAD", tag)) {
+                h = *(header *)db->data->data;
+                print_header(h);
+            }
+            else if(!strcmp("MASS", tag)) {
+                mass_handler(h, db);
+                printf("Units : %s\n", UNITS_MASS);
+            }
+            else if(!strcmp("RHO ", tag)) {
+                onlygas_handler(h, db);
+                printf("Units : %s\n", UNITS_DENSITY);
+            }
+            else if(!strcmp("U   ", tag)) {
+                onlygas_handler(h, db);
+                printf("Units : %s\n", UNITS_U);
+            }
+            else if(!strcmp("HSML", tag)) {
+                onlygas_handler(h, db);
+                printf("Units : %s\n", UNITS_HSML);
+            }
 
             if(dst) {
                 if(is_allowed(tag))
