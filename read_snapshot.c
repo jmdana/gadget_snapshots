@@ -108,12 +108,12 @@ int same_file(char *src, char *dst) {
 
 int onlygas_handler(header h, datablock *db) {
     int i;
-    float *densities;
+    float *values;
     float min;
     float max;
     int total_size = 0;
 
-    densities = (float *) db->data->data;
+    values = (float *) db->data->data;
 
     if(h.npart[0] != 0) {
         min = FLT_MAX;
@@ -122,8 +122,8 @@ int onlygas_handler(header h, datablock *db) {
         total_size += h.npart[0] * sizeof(float);
 
         for(i=0; i < h.npart[0]; i++) {
-            min = fmin(min, densities[i]);
-            max = fmax(max, densities[i]);
+            min = fmin(min, values[i]);
+            max = fmax(max, values[i]);
         }
 
         if(min == max)
