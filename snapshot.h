@@ -20,6 +20,11 @@
 
 #include <stdio.h>
 
+#define TAG_SIZE    8
+#define HEADER_SIZE 256
+
+int SWAP;
+
 typedef struct {
     int size1;
     char *data;
@@ -51,3 +56,7 @@ datablock *read_datablock(FILE *src);
 int free_datablock(datablock *db);
 int write_datablock(FILE *dst, datablock *db);
 int print_header(header h);
+int endianness(FILE *f);
+header construct_header(datablock *db);
+int mass_handler(header h, datablock *db);
+int onlygas_handler(header h, datablock *db);

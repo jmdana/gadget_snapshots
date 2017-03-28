@@ -19,7 +19,68 @@
  */
 
 #include <stdlib.h>
+#include <float.h>
+#include <math.h>
+#include <byteswap.h>
 #include "snapshot.h"
+
+long swap64(long x) {
+    if(!SWAP)
+        return x;
+
+    return bswap_64(x);
+}
+
+int swap32(int x) {
+    if(!SWAP)
+        return x;
+
+    return bswap_32(x);
+}
+
+short swap16(short x) {
+    if(!SWAP)
+        return x;
+
+    return bswap_16(x);
+}
+
+float swapf(float x) {
+    if(!SWAP)
+        return x;
+
+    float outf;
+    char *in = (char *) &x;
+    char *out = (char*) &outf;
+
+    out[0] = in[3];
+    out[1] = in[2];
+    out[2] = in[1];
+    out[3] = in[0];
+
+    return outf;
+}
+
+double swapd(double x) {
+    if(!SWAP)
+        return x;
+
+    double outd;
+    char *in = (char *) &x;
+    char *out = (char*) &outd;
+
+    out[0] = in[7];
+    out[1] = in[6];
+    out[2] = in[5];
+    out[3] = in[4];
+    out[4] = in[3];
+    out[5] = in[2];
+    out[6] = in[1];
+    out[7] = in[0];
+
+    return outd;
+}
+
 
 int read_size(FILE *f) {
     int size;
@@ -28,8 +89,58 @@ int read_size(FILE *f) {
 
     if(feof(f))
         return 0;
+    
+    return swap32(size);
+}
 
-    return size;
+
+header construct_header(datablock *db) {
+    int i;
+    header h = *(header *)db->data->data;
+
+    if(SWAP) {
+        for(i=0; i<6; i++) {
+            h.npart[i] = swap32(h.npart[i]);
+            h.mass[i] = swapd(h.mass[i]);
+            h.npartTotal[i] = swap32(h.npartTotal[i]);
+        }
+
+        h.time = swapd(h.time);
+        h.redshift = swapd(h.redshift);
+
+        h.flag_sfr = swap32(h.flag_sfr);
+        h.flag_feedback = swap32(h.flag_feedback);
+        h.flag_cooling = swap32(h.flag_cooling);
+        h.num_files = swap32(h.num_files);
+
+        h.BoxSize = swapd(h.BoxSize);
+        h.Omega0 = swapd(h.Omega0);
+        h.OmegaLambda = swapd(h.OmegaLambda);
+        h.HubbleParam = swapd(h.HubbleParam);
+
+    }
+
+    return h;
+}
+
+int endianness(FILE *f) {
+    long pos;
+    int size;
+
+    pos = ftell(f);
+
+    rewind(f);
+
+    size = read_size(f);
+
+    fseek(f, pos, SEEK_SET);
+
+    if(size == TAG_SIZE)
+        return LITTLE_ENDIAN;
+    else {
+        SWAP = 1;
+        return BIG_ENDIAN;
+    }
 }
 
 int print_header(header h) {
@@ -140,5 +251,72 @@ datablock *read_datablock(FILE *src) {
     }
 
     return db;
+}
+
+int mass_handler(header h, datablock *db) {
+    int i;
+    int m;
+    float *masses;
+    float min;
+    float max;
+    int total_size = 0;
+
+    masses = (float *) db->data->data;
+
+    for(i=0; i<6; i++)
+        if(h.npart[i] != 0 && h.mass[i] == 0) {
+            total_size += h.npart[i] * sizeof(float);
+            min = FLT_MAX;
+            max = FLT_MIN;
+
+            for(m=0; m < h.npart[i]; m++) {
+                min = fmin(min, swapf(masses[m]));
+                max = fmax(max, swapf(masses[m]));
+            }
+
+            if(min == max)
+                printf("Type %d: [%f]\n", i, min);
+            else
+                printf("Type %d: [%f - %f]\n", i, min, max);
+
+            masses += h.npart[i];
+        }
+
+    if(total_size != db->data->size1)
+        printf("The measured size is different from the reported by the block delimiter!\n");
+
+    return 0;
+}
+
+int onlygas_handler(header h, datablock *db) {
+    int i;
+    float *values;
+    float min;
+    float max;
+    int total_size = 0;
+
+    values = (float *) db->data->data;
+
+    if(h.npart[0] != 0) {
+        min = FLT_MAX;
+        max = FLT_MIN;
+
+        total_size += h.npart[0] * sizeof(float);
+
+        for(i=0; i < h.npart[0]; i++) {
+            min = fmin(min, swapf(values[i]));
+            max = fmax(max, swapf(values[i]));
+        }
+
+        if(min == max)
+            printf("Type 0: [%f]\n", min);
+        else
+            printf("Type 0: [%f - %f]\n", min, max);
+    }
+
+    if(total_size != db->data->size1)
+        printf("The measured size is different from the reported by the block delimiter!\n");
+
+    return 0;
 }
 
