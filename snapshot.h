@@ -60,3 +60,4 @@ int endianness(FILE *f);
 header construct_header(datablock *db);
 int mass_handler(header h, datablock *db);
 int onlygas_handler(header h, datablock *db);
+int init_snapshot(FILE *src);

@@ -70,8 +70,7 @@ int read_snapshot(FILE *dst, FILE *src) {
     datablock *db;
     header h;
 
-    if(endianness(src) == BIG_ENDIAN)
-        printf("The file is Big-Endian\n");
+    init_snapshot(src);
 
     while(!feof(src)) {
         db = read_datablock(src);
@@ -127,7 +126,7 @@ void usage(char *exec) {
 int main(int argc, char *argv[]) {
     FILE *src;
     FILE *dst;
-  
+
     if(argc < 2) {
         usage(argv[0]);
         return EXIT_FAILURE;

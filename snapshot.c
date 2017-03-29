@@ -136,11 +136,9 @@ int endianness(FILE *f) {
     fseek(f, pos, SEEK_SET);
 
     if(size == TAG_SIZE)
-        return LITTLE_ENDIAN;
-    else {
-        SWAP = 1;
-        return BIG_ENDIAN;
-    }
+        return BYTE_ORDER;
+    else
+        return BYTE_ORDER == LITTLE_ENDIAN ? BIG_ENDIAN : LITTLE_ENDIAN;
 }
 
 int print_header(header h) {
@@ -236,6 +234,22 @@ block *read_block(FILE *src) {
     }
 
     return b;
+}
+
+int init_snapshot(FILE *src) {
+    int endian;
+
+    endian = endianness(src);
+
+    printf("Your machine is %s\n", BYTE_ORDER == LITTLE_ENDIAN ? "Little-Endian" : "Big-Endian");
+    printf("The file is %s\n", endian == LITTLE_ENDIAN ? "Little-Endian" : "Big-Endian");
+
+    SWAP = (endian != BYTE_ORDER);
+
+    if(SWAP)
+        printf("Byte swapping required \n");
+
+    return 0;
 }
 
 datablock *read_datablock(FILE *src) {
