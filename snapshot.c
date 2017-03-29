@@ -190,10 +190,17 @@ int free_datablock(datablock *db) {
 
 
 int write_block(FILE *dst, block *b) {
+    int s1;
+    int s2;
+
     printf("Writing %d + %ld * 2 bytes\n", b->size1, sizeof(int));
-    fwrite(&b->size1, sizeof(int), 1, dst);
+
+    s1 = swap32(b->size1);
+    s2 = swap32(b->size2);
+
+    fwrite(&s1, sizeof(int), 1, dst);
     fwrite(b->data, sizeof(char), b->size1, dst);
-    fwrite(&b->size2, sizeof(int), 1, dst);
+    fwrite(&s2, sizeof(int), 1, dst);
 
     return 0;
 }
