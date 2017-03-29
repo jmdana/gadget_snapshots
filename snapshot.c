@@ -24,28 +24,28 @@
 #include <byteswap.h>
 #include "snapshot.h"
 
-long swap64(long x) {
+inline long swap64(long x) {
     if(!SWAP)
         return x;
 
     return bswap_64(x);
 }
 
-int swap32(int x) {
+inline int swap32(int x) {
     if(!SWAP)
         return x;
 
     return bswap_32(x);
 }
 
-short swap16(short x) {
+inline short swap16(short x) {
     if(!SWAP)
         return x;
 
     return bswap_16(x);
 }
 
-float swapf(float x) {
+inline float swapf(float x) {
     if(!SWAP)
         return x;
 
@@ -61,7 +61,7 @@ float swapf(float x) {
     return outf;
 }
 
-double swapd(double x) {
+inline double swapd(double x) {
     if(!SWAP)
         return x;
 
