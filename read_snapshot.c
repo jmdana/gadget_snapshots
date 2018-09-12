@@ -19,9 +19,11 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <ctype.h>
 #include "utils.h"
 #include "snapshot.h"
 
@@ -65,29 +67,57 @@ int is_allowed(char *tag) {
     return 0;
 }
 
-int read_snapshot_v1(FILE *src) {
+int read_snapshot_v1(char *src_name) {
+    FILE *src;
+    int i = 0;
     datablock *db;
     header h;
 
-    init_snapshot(src);
+    do {
+        printf("[%s]\n", src_name);
 
-    db = read_datablock(src);
+        src = fopen(src_name, "r");
 
-    printf("--------------------------------------------\n");
-    printf("[data: %d B]\n", db->data->size1);
+        if(src == NULL) {
+            perror(src_name);
+            return 0;
+        }
 
-    h = construct_header(db);
-    print_header(h);
+        init_snapshot(src);
 
-    free_datablock(db);
+        db = read_datablock(src);
+
+        printf("--------------------------------------------\n");
+        printf("[data: %d B]\n", db->data->size1);
+
+        h = construct_header(db);
+        print_header(h);
+
+        free_datablock(db);
+        fclose(src);
+
+        i++;
+
+        if(h.num_files > 1 && isdigit(src_name[strlen(src_name) - 1]))
+            src_name[strlen(src_name) - 1] = i + 48;
+    } while(i < h.num_files);
 
     return 0;
 }
 
-int read_snapshot_v2(FILE *dst, FILE *src) {
+int read_snapshot_v2(char *dst_name, char *src_name) {
     char tag[5];
+    FILE *src;
+    FILE *dst;
     datablock *db;
     header h;
+
+    src = fopen(src_name, "r");
+
+    if(dst_name)
+        dst = fopen(dst_name, "w");
+    else
+        dst = NULL;
 
     init_snapshot(src);
 
@@ -131,13 +161,23 @@ int read_snapshot_v2(FILE *dst, FILE *src) {
         }
     }
 
+    fclose(src);
+
+    if(dst_name)
+        fclose(dst);
+
     return 0;
 }
 
-int read_snapshot(FILE *dst, FILE *src) {
+int read_snapshot(char *dst_name, char *src_name) {
     int format;
+    FILE *src;
+
+    src = fopen(src_name, "r");
 
     format = snapformat(src);
+
+    fclose(src);
 
     printf("SnapFormat = %d\n", format);
 
@@ -146,10 +186,10 @@ int read_snapshot(FILE *dst, FILE *src) {
             printf("SnapFormat UNKNOWN!\n");
             break;
         case 1:
-            read_snapshot_v1(src);
+            read_snapshot_v1(src_name);
             break;
         case 2:
-            read_snapshot_v2(dst, src);
+            read_snapshot_v2(dst_name, src_name);
             break;
     }
 
@@ -166,7 +206,8 @@ void usage(char *exec) {
 
 int main(int argc, char *argv[]) {
     FILE *src;
-    FILE *dst;
+    char *src_name;
+    char *dst_name;
 
     if(argc < 2) {
         usage(argv[0]);
@@ -179,7 +220,8 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    src = fopen(argv[1], "r");
+    src_name = argv[1];
+    src = fopen(src_name, "r");
 
     if(argc > 2) {
         if(!access(argv[2], F_OK)) {
@@ -194,18 +236,14 @@ int main(int argc, char *argv[]) {
                 return EXIT_FAILURE;
             }
         }
-        dst = fopen(argv[2], "w");
+        dst_name = argv[2];
     }
     else
-        dst = NULL;
-
-
-    read_snapshot(dst, src);
+        dst_name = NULL;
 
     fclose(src);
 
-    if(dst)
-        fclose(dst);
-    
+    read_snapshot(dst_name, src_name);
+
     return EXIT_SUCCESS;
 }
