@@ -123,6 +123,26 @@ header construct_header(datablock *db) {
     return h;
 }
 
+int snapformat(FILE *f) {
+    long pos;
+    int size;
+
+    pos = ftell(f);
+
+    rewind(f);
+
+    size = read_size(f);
+
+    fseek(f, pos, SEEK_SET);
+
+    if(size == TAG_SIZE || swap32(size) == TAG_SIZE)
+        return 2;
+    else if(size == HEADER_SIZE || swap32(size) == HEADER_SIZE)
+        return 1;
+
+    return 0;
+}
+
 int endianness(FILE *f) {
     long pos;
     int size;
@@ -135,7 +155,7 @@ int endianness(FILE *f) {
 
     fseek(f, pos, SEEK_SET);
 
-    if(size == TAG_SIZE)
+    if(size == TAG_SIZE || size == HEADER_SIZE)
         return BYTE_ORDER;
     else
         return BYTE_ORDER == LITTLE_ENDIAN ? BIG_ENDIAN : LITTLE_ENDIAN;
@@ -179,7 +199,9 @@ int free_block(block *b) {
 }
 
 int free_datablock(datablock *db) {
-    free_block(db->tag);
+    if(SNAP_FORMAT == 2)
+        free_block(db->tag);
+
     free_block(db->data);
     free(db);
 
@@ -249,6 +271,8 @@ int init_snapshot(FILE *src) {
     if(SWAP)
         printf("Byte swapping required \n");
 
+    SNAP_FORMAT = snapformat(src);
+
     return 0;
 }
 
@@ -256,11 +280,18 @@ datablock *read_datablock(FILE *src) {
     datablock *db;
 
     db = (datablock *) malloc(sizeof(*db));
-    db->tag = read_block(src);
 
-    if(!db->tag) {
-        free(db);
-        return NULL;
+    if(SNAP_FORMAT == 1) {
+        db->tag = NULL;
+    }
+
+    else if(SNAP_FORMAT == 2) {
+        db->tag = read_block(src);
+
+        if(!db->tag) {
+            free(db);
+            return NULL;
+        }
     }
 
     db->data = read_block(src);

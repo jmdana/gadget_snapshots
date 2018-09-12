@@ -65,7 +65,26 @@ int is_allowed(char *tag) {
     return 0;
 }
 
-int read_snapshot(FILE *dst, FILE *src) {
+int read_snapshot_v1(FILE *src) {
+    datablock *db;
+    header h;
+
+    init_snapshot(src);
+
+    db = read_datablock(src);
+
+    printf("--------------------------------------------\n");
+    printf("[data: %d B]\n", db->data->size1);
+
+    h = construct_header(db);
+    print_header(h);
+
+    free_datablock(db);
+
+    return 0;
+}
+
+int read_snapshot_v2(FILE *dst, FILE *src) {
     char tag[5];
     datablock *db;
     header h;
@@ -110,6 +129,28 @@ int read_snapshot(FILE *dst, FILE *src) {
             }
             free_datablock(db);
         }
+    }
+
+    return 0;
+}
+
+int read_snapshot(FILE *dst, FILE *src) {
+    int format;
+
+    format = snapformat(src);
+
+    printf("SnapFormat = %d\n", format);
+
+    switch(format) {
+        case 0:
+            printf("SnapFormat UNKNOWN!\n");
+            break;
+        case 1:
+            read_snapshot_v1(src);
+            break;
+        case 2:
+            read_snapshot_v2(dst, src);
+            break;
     }
 
     return 0;

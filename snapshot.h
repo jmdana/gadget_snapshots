@@ -24,6 +24,7 @@
 #define HEADER_SIZE 256
 
 int SWAP;
+int SNAP_FORMAT;
 
 typedef struct {
     int size1;
@@ -56,6 +57,7 @@ datablock *read_datablock(FILE *src);
 int free_datablock(datablock *db);
 int write_datablock(FILE *dst, datablock *db);
 int print_header(header h);
+int snapformat(FILE *f);
 int endianness(FILE *f);
 header construct_header(datablock *db);
 int mass_handler(header h, datablock *db);
